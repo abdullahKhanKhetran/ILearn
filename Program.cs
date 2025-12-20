@@ -1,23 +1,32 @@
+﻿using DotNetEnv;
+using ILearn.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 🔹 Load .env
+Env.Load();
+Console.WriteLine("✅ Environment variables loaded");
+
+// 🔹 MVC
 builder.Services.AddControllersWithViews();
+
+// 🔹 Supabase
+builder.Services.AddSingleton<SupabaseService>();
+
+// 🔹 Chat client
+builder.Services.AddHttpClient<ChatService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthorization();
 
 app.MapControllerRoute(
