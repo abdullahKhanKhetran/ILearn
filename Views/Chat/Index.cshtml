@@ -1,0 +1,262 @@
+﻿@{
+    ViewData["Title"] = "AI Chat Assistant";
+}
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>📊 Select Student</h5>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.ApiStatus == null || ViewBag.ApiStatus == false)
+                    {
+                        <div class="alert alert-danger">
+                            <strong>⚠️ Python API Offline</strong>
+                            <hr />
+                            <small>Start backend:</small>
+                            <code>cd chatbot && uvicorn api.main:app --reload</code>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success">
+                            ✅ AI Ready
+                        </div>
+                    }
+
+                    <select id="studentSelect" class="form-select mb-3">
+                        <option value="">Choose a student...</option>
+                        @foreach (var student in ViewBag.Students)
+                        {
+                            <option value="@student.StudentId">@student.StudentId - @student.Name</option>
+                        }
+                    </select>
+
+                    <button id="newChatBtn" class="btn btn-outline-secondary w-100 mb-3">
+                        🔄 New Conversation
+                    </button>
+
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6>💡 Try asking:</h6>
+                            <small>
+                                <ul class="mb-0">
+                                    <li>Hi / Hello</li>
+                                    <li>How is this student?</li>
+                                    <li>What subjects need work?</li>
+                                    <li>Show attendance</li>
+                                </ul>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>🎓 AI Performance Assistant</h4>
+                </div>
+                <div class="card-body" id="chatContainer" style="height: 500px; overflow-y: auto;">
+                    <div id="chatMessages">
+                        <div class="text-center text-muted py-5">
+                            <h5>Select a student to start chatting</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" class="form-control"
+                               placeholder="Ask about student performance..."
+                               disabled />
+                        <button id="sendBtn" class="btn btn-primary" disabled>
+                            Send
+                        </button>
+                    </div>
+                    <div id="loadingIndicator" class="mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="ms-2">AI is thinking...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suggestions Area -->
+            <div id="suggestionsArea" class="mt-3" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <h6>💭 Suggested questions:</h6>
+                        <div id="suggestionsContainer" class="d-flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let conversationHistory = [];
+        let currentStudentId = '';
+
+        const studentSelect = document.getElementById('studentSelect');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatContainer = document.getElementById('chatContainer');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const suggestionsArea = document.getElementById('suggestionsArea');
+        const suggestionsContainer = document.getElementById('suggestionsContainer');
+
+        // Student selection
+        studentSelect.addEventListener('change', function() {
+            currentStudentId = this.value;
+            if (currentStudentId) {
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                resetChat();
+            } else {
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+            }
+        });
+
+        // New chat
+        newChatBtn.addEventListener('click', resetChat);
+
+        // Send message
+        sendBtn.addEventListener('click', () => sendMessage());
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function resetChat() {
+            conversationHistory = [];
+            chatMessages.innerHTML = '<div class="text-center text-muted py-5"><h5>Start a conversation!</h5></div>';
+            suggestionsArea.style.display = 'none';
+        }
+
+        async function sendMessage(messageText = null) {
+            const message = messageText || messageInput.value.trim();
+            if (!message || !currentStudentId) return;
+
+            if (!messageText) {
+                messageInput.value = '';
+            }
+
+            addMessage('user', message);
+
+            loadingIndicator.style.display = 'block';
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+
+            try {
+                const requestBody = {
+                    student_id: currentStudentId,
+                    message: message,
+                    conversation_history: conversationHistory
+                };
+
+                const response = await fetch('/Chat/SendMessage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API Error:', response.status, errorText);
+                    throw new Error(`API request failed: ${response.status} - ${errorText}`);
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);
+
+                // Handle both snake_case (from API) and camelCase (fallback) property names
+                const responseText = data.response || data.Response || '';
+                const performanceCat = data.performance_category || data.performanceCategory || null;
+                const convHistory = data.conversation_history || data.conversationHistory || [];
+                const suggestions = data.suggestions || [];
+
+                if (!responseText) {
+                    throw new Error('Empty response from API');
+                }
+
+                addMessage('assistant', responseText, performanceCat);
+                conversationHistory = convHistory;
+
+                if (suggestions.length > 0) {
+                    showSuggestions(suggestions);
+                }
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessage('assistant', `❌ Failed to get response: ${error.message}. Is the Python API running?`);
+            } finally {
+                loadingIndicator.style.display = 'none';
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function addMessage(role, content, performanceCategory = null) {
+            if (chatMessages.querySelector('.text-muted')) {
+                chatMessages.innerHTML = '';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `mb-3 ${role === 'user' ? 'text-end' : ''}`;
+
+            const badge = role === 'user'
+                ? '<span class="badge bg-primary me-2">You</span>'
+                : '<span class="badge bg-success me-2">🤖 AI</span>';
+
+            let categoryBadge = '';
+            if (performanceCategory) {
+                const colors = {
+                    'Fantastic': 'success',
+                    'Average': 'info',
+                    'Below Average': 'warning'
+                };
+                categoryBadge = `<span class="badge bg-${colors[performanceCategory]} ms-2">🌟 ${performanceCategory}</span>`;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="d-inline-block text-start" style="max-width: 80%;">
+                    ${badge}${categoryBadge}
+                    <div class="card ${role === 'user' ? 'bg-primary text-white' : 'bg-light'}">
+                        <div class="card-body py-2">
+                            ${content.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            chatMessages.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showSuggestions(suggestions) {
+            suggestionsContainer.innerHTML = '';
+            suggestions.forEach((suggestion, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-sm btn-outline-primary';
+                btn.textContent = suggestion;
+                btn.onclick = () => sendMessage(suggestion);
+                suggestionsContainer.appendChild(btn);
+            });
+            suggestionsArea.style.display = 'block';
+        }
+    </script>
+}

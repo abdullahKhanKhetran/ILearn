@@ -1,0 +1,155 @@
+@model ILearn.Models.Student
+@{
+    ViewData["Title"] = "Add New Student";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h3 class="mb-0">➕ Add New Student</h3>
+                </div>
+                <div class="card-body p-4">
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <form asp-action="Create" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="StudentId" class="form-label fw-bold">Student ID *</label>
+                                <input asp-for="StudentId" class="form-control" placeholder="e.g., S001" required />
+                                <span asp-validation-for="StudentId" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Name" class="form-label fw-bold">Full Name *</label>
+                                <input asp-for="Name" class="form-control" placeholder="e.g., Ahmed Khan" required />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="Semester" class="form-label fw-bold">Semester *</label>
+                                <input asp-for="Semester" type="number" class="form-control" min="1" max="10" required />
+                                <span asp-validation-for="Semester" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Attendance" class="form-label fw-bold">Attendance (%) *</label>
+                                <input asp-for="Attendance" type="number" class="form-control" min="0" max="100" step="0.1" placeholder="e.g., 85.5" required />
+                                <span asp-validation-for="Attendance" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label asp-for="AssignmentsSubmitted" class="form-label fw-bold">Assignments Submitted *</label>
+                                <input asp-for="AssignmentsSubmitted" type="number" class="form-control" min="0" required />
+                                <span asp-validation-for="AssignmentsSubmitted" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TotalAssignments" class="form-label fw-bold">Total Assignments *</label>
+                                <input asp-for="TotalAssignments" type="number" class="form-control" min="0" required />
+                                <span asp-validation-for="TotalAssignments" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Subjects & Marks *</label>
+                            <div id="subjects-container" class="border rounded p-3 bg-light">
+                                <div class="subject-entry mb-2">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <input type="text" name="SubjectNames[]" class="form-control" placeholder="Subject Name" required />
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="SubjectMarks[]" class="form-control" placeholder="Marks" min="0" required />
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="number" name="SubjectTotals[]" class="form-control" placeholder="Total" min="0" required />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addSubject()">
+                                ➕ Add Another Subject
+                            </button>
+                            <input type="hidden" id="subjectsJson" name="subjectsJson" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="PerformanceNotes" class="form-label fw-bold">Performance Notes</label>
+                            <textarea asp-for="PerformanceNotes" class="form-control" rows="4" placeholder="Enter performance notes and observations..."></textarea>
+                            <span asp-validation-for="PerformanceNotes" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Create Student</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function addSubject() {
+            const container = document.getElementById('subjects-container');
+            const newEntry = document.createElement('div');
+            newEntry.className = 'subject-entry mb-2';
+            newEntry.innerHTML = `
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="text" name="SubjectNames[]" class="form-control" placeholder="Subject Name" required />
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" name="SubjectMarks[]" class="form-control" placeholder="Marks" min="0" required />
+                    </div>
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <input type="number" name="SubjectTotals[]" class="form-control" placeholder="Total" min="0" required />
+                            <button type="button" class="btn btn-outline-danger" onclick="removeSubject(this)">Remove</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(newEntry);
+        }
+
+        function removeSubject(btn) {
+            btn.closest('.subject-entry').remove();
+        }
+
+        // Convert form data to JSON format expected by API
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const formData = new FormData(this);
+            const subjects = {};
+            const subjectNames = formData.getAll('SubjectNames[]');
+            const subjectMarks = formData.getAll('SubjectMarks[]');
+            const subjectTotals = formData.getAll('SubjectTotals[]');
+            
+            for (let i = 0; i < subjectNames.length; i++) {
+                if (subjectNames[i]) {
+                    subjects[subjectNames[i]] = {
+                        marks: parseInt(subjectMarks[i]) || 0,
+                        total: parseInt(subjectTotals[i]) || 100
+                    };
+                }
+            }
+            
+            // Set subjects JSON in hidden field
+            document.getElementById('subjectsJson').value = JSON.stringify(subjects);
+        });
+    </script>
+}
+

@@ -1,8 +1,97 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Home - ILearn";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="home-hero">
+    <div class="container">
+        <div class="row align-items-center min-vh-75">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4 text-white">
+                    Welcome to <span class="text-gradient">ILearn</span>
+                </h1>
+                <p class="lead text-white-50 mb-4">
+                    Your intelligent learning platform powered by AI. Manage students, track performance, and get instant insights with our AI-powered chatbot.
+                </p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a asp-controller="Student" asp-action="Index" class="btn btn-light btn-lg px-4">
+                        <span class="me-2">👥</span> Manage Students
+                    </a>
+                    <a asp-controller="Chat" asp-action="Index" class="btn btn-outline-light btn-lg px-4">
+                        <span class="me-2">💬</span> Start AI Chat
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="hero-illustration">
+                    <div class="floating-card card-1">📚</div>
+                    <div class="floating-card card-2">🎯</div>
+                    <div class="floating-card card-3">🚀</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="features-section py-5">
+    <div class="container">
+        <h2 class="text-center mb-5 fw-bold">Platform Features</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h4>Student Management</h4>
+                    <p>Comprehensive CRUD operations for managing student records, grades, attendance, and performance data.</p>
+                    <a asp-controller="Student" asp-action="Index" class="btn btn-sm btn-outline-primary">View Students →</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h4>AI-Powered Chat</h4>
+                    <p>Get instant insights about student performance using our advanced AI chatbot with RAG technology.</p>
+                    <a asp-controller="Chat" asp-action="Index" class="btn btn-sm btn-outline-primary">Start Chatting →</a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h4>Performance Analytics</h4>
+                    <p>Track student progress, identify areas for improvement, and get actionable recommendations.</p>
+                    <a asp-controller="Student" asp-action="Index" class="btn btn-sm btn-outline-primary">View Analytics →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="quick-actions py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5 fw-bold">Quick Actions</h2>
+        <div class="row g-3">
+            <div class="col-md-3 col-sm-6">
+                <a asp-controller="Student" asp-action="Create" class="action-card">
+                    <div class="action-icon">➕</div>
+                    <h5>Add Student</h5>
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <a asp-controller="Student" asp-action="Index" class="action-card">
+                    <div class="action-icon">📋</div>
+                    <h5>View All</h5>
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <a asp-controller="Chat" asp-action="Index" class="action-card">
+                    <div class="action-icon">💬</div>
+                    <h5>AI Assistant</h5>
+                </a>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <a asp-controller="Student" asp-action="Index" class="action-card">
+                    <div class="action-icon">📈</div>
+                    <h5>Reports</h5>
+                </a>
+            </div>
+        </div>
+    </div>
 </div>

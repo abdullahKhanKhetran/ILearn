@@ -39,18 +39,25 @@
                     <h5>📊 Subjects & Marks</h5>
                 </div>
                 <div class="card-body">
-                    @foreach (var subject in Model.Subjects)
+                    @if (Model.Subjects != null && Model.Subjects.Any())
                     {
-                        var percentage = (double)subject.Value.Marks / subject.Value.Total * 100;
-                        <div class="mb-3">
-                            <strong>@subject.Key:</strong> @subject.Value.Marks / @subject.Value.Total
-                            <div class="progress">
-                                <div class="progress-bar bg-@(percentage >= 85 ? "success" : percentage >= 60 ? "warning" : "danger")"
-                                     style="width: @percentage%">
-                                    @percentage.ToString("F1")%
+                        @foreach (var subject in Model.Subjects)
+                        {
+                            var percentage = (double)subject.Value.Marks / subject.Value.Total * 100;
+                            <div class="mb-3">
+                                <strong>@subject.Key:</strong> @subject.Value.Marks / @subject.Value.Total
+                                <div class="progress">
+                                    <div class="progress-bar bg-@(percentage >= 85 ? "success" : percentage >= 60 ? "warning" : "danger")"
+                                         style="width: @percentage%">
+                                        @percentage.ToString("F1")%
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No subjects data available</p>
                     }
                 </div>
             </div>

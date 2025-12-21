@@ -5,9 +5,12 @@
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>📚 Student Management</h2>
-        <a asp-action="Create" class="btn btn-primary">
-            ➕ Add New Student
+        <div>
+            <h2 class="fw-bold mb-1">📚 Student Management</h2>
+            <p class="text-muted mb-0">Manage all your students in one place</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary btn-lg">
+            <span class="me-2">➕</span> Add New Student
         </a>
     </div>
 
@@ -27,39 +30,60 @@
         </div>
     }
 
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Student ID</th>
-                        <th>Name</th>
-                        <th>Semester</th>
-                        <th>Attendance</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var student in Model)
-                    {
+    <div class="card shadow-lg border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
                         <tr>
-                            <td>@student.StudentId</td>
-                            <td>@student.Name</td>
-                            <td>@student.Semester</td>
-                            <td>
-                                <span class="badge bg-@(student.Attendance >= 80 ? "success" : student.Attendance >= 70 ? "warning" : "danger")">
-                                    @student.Attendance%
-                                </span>
-                            </td>
-                            <td>
-                                <a asp-action="Details" asp-route-id="@student.StudentId" class="btn btn-sm btn-info">👁️ View</a>
-                                <a asp-action="Edit" asp-route-id="@student.StudentId" class="btn btn-sm btn-warning">✏️ Edit</a>
-                                <a asp-action="Delete" asp-route-id="@student.StudentId" class="btn btn-sm btn-danger">🗑️ Delete</a>
-                            </td>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Semester</th>
+                            <th>Attendance</th>
+                            <th>Assignments</th>
+                            <th class="text-end">Actions</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var student in Model)
+                        {
+                            <tr>
+                                <td><strong>@student.StudentId</strong></td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="student-avatar me-2">👤</div>
+                                        <span>@student.Name</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">Semester @student.Semester</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@(student.Attendance >= 80 ? "success" : student.Attendance >= 70 ? "warning" : "danger")">
+                                        @student.Attendance.ToString("F1")%
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">@student.AssignmentsSubmitted / @student.TotalAssignments</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <a asp-action="Details" asp-route-id="@student.StudentId" class="btn btn-sm btn-info" title="View Details">
+                                            👁️
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@student.StudentId" class="btn btn-sm btn-warning" title="Edit">
+                                            ✏️
+                                        </a>
+                                        <a asp-action="Delete" asp-route-id="@student.StudentId" class="btn btn-sm btn-danger" title="Delete">
+                                            🗑️
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
 
             @if (!Model.Any())
             {
