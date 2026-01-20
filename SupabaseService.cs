@@ -12,17 +12,28 @@ namespace ILearn.Services
 
         public SupabaseService()
         {
-            _supabaseUrl = Environment.GetEnvironmentVariable("Supabase__Url")
-                ?? throw new Exception("Supabase URL not found");
-            _supabaseKey = Environment.GetEnvironmentVariable("Supabase__Key")
-                ?? throw new Exception("Supabase Key not found");
+            var url = Environment.GetEnvironmentVariable("Supabase__Url");
+            var key = Environment.GetEnvironmentVariable("Supabase__Key");
+            
+            // Debug logging
+            Console.WriteLine($"🔍 Checking Supabase config...");
+            Console.WriteLine($"   Supabase__Url: {(string.IsNullOrEmpty(url) ? "NOT FOUND" : url.Substring(0, Math.Min(30, url.Length)) + "...")}");
+            Console.WriteLine($"   Supabase__Key: {(string.IsNullOrEmpty(key) ? "NOT FOUND" : "Found (" + key.Length + " chars)")}");
+            
+            if (string.IsNullOrEmpty(url))
+                throw new Exception("❌ Supabase__Url not found in environment variables");
+            
+            if (string.IsNullOrEmpty(key))
+                throw new Exception("❌ Supabase__Key not found in environment variables");
 
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_supabaseKey}");
+            Console.WriteLine($"✅ Supabase URL loaded: {url[..30]}...");
 
-            Console.WriteLine($"✅ Supabase configured");
-        }
+            _client = new Client(url, key, new SupabaseOptions
+            {
+                AutoRefreshToken = true,
+                AutoConnectRealtime = false
+            });
+        } 
 
         public async Task<List<Student>> GetAllStudentsAsync()
         {

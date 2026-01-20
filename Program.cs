@@ -1,11 +1,17 @@
-﻿using DotNetEnv;
-using ILearn.Services;
+﻿using ILearn.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔹 Load .env
-Env.Load();
-Console.WriteLine("✅ Environment variables loaded");
+// 🔹 Only load .env in Development (local)
+if (builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.Load();
+    Console.WriteLine("✅ .env file loaded (Development)");
+}
+else
+{
+    Console.WriteLine("✅ Using Railway environment variables (Production)");
+}
 
 // 🔹 MVC
 builder.Services.AddControllersWithViews();
