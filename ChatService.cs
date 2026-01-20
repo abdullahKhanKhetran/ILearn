@@ -8,23 +8,30 @@ namespace ILearn.Services
     {
         private readonly HttpClient _httpClient;
         private readonly string _apiBaseUrl;
+        private readonly JsonSerializerOptions _jsonOptions;
 
         public ChatService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
             _apiBaseUrl = configuration["ChatbotApi:BaseUrl"] ?? "http://localhost:8000";
+            
+            // Configure JSON options to respect JsonPropertyName attributes
+            _jsonOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
         }
 
         public async Task<ChatResponse> SendMessageAsync(ChatRequest request)
         {
-            var json = JsonSerializer.Serialize(request);
+            var json = JsonSerializer.Serialize(request, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_apiBaseUrl}/chat", content);
             response.EnsureSuccessStatusCode();
 
             var responseJson = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<ChatResponse>(responseJson)
+            return JsonSerializer.Deserialize<ChatResponse>(responseJson, _jsonOptions)
                 ?? throw new Exception("Failed to deserialize response");
         }
 

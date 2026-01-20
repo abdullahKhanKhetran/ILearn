@@ -1,176 +1,168 @@
-﻿using Supabase;
+﻿using System.Text;
+using System.Text.Json;
 using ILearn.Models;
-using Postgrest.Models;
-using Postgrest.Attributes;
 
 namespace ILearn.Services
 {
-    // 🔹 Supabase table mapping (ONLY for DB)
-    [Table("students")]
-    public class StudentTable : BaseModel
-    {
-        [PrimaryKey("id")]
-        public long Id { get; set; }
-
-        [Column("student_id")]
-        public string StudentId { get; set; } = string.Empty;
-
-        [Column("name")]
-        public string Name { get; set; } = string.Empty;
-
-        [Column("semester")]
-        public int Semester { get; set; }
-
-        [Column("subjects")]
-        public Dictionary<string, object> Subjects { get; set; } = new();
-
-        [Column("attendance")]
-        public double Attendance { get; set; }
-
-        [Column("assignments_submitted")]
-        public int AssignmentsSubmitted { get; set; }
-
-        [Column("total_assignments")]
-        public int TotalAssignments { get; set; }
-
-        [Column("performance_notes")]
-        public string PerformanceNotes { get; set; } = string.Empty;
-    }
-
-    // 🔹 Service
     public class SupabaseService
     {
-        private readonly Client _client;
-        private bool _initialized = false;
+        private readonly HttpClient _httpClient;
+        private readonly string _supabaseUrl;
+        private readonly string _supabaseKey;
 
         public SupabaseService()
         {
-            var url = Environment.GetEnvironmentVariable("Supabase__Url")
-                ?? throw new Exception("❌ Supabase__Url not found");
-            var key = Environment.GetEnvironmentVariable("Supabase__Key")
-                ?? throw new Exception("❌ Supabase__Key not found");
+            _supabaseUrl = Environment.GetEnvironmentVariable("Supabase__Url")
+                ?? throw new Exception("Supabase URL not found");
+            _supabaseKey = Environment.GetEnvironmentVariable("Supabase__Key")
+                ?? throw new Exception("Supabase Key not found");
 
-            Console.WriteLine($"✅ Supabase URL loaded: {url[..30]}...");
+            _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_supabaseKey}");
 
-            _client = new Client(url, key, new SupabaseOptions
-            {
-                AutoRefreshToken = true,
-                AutoConnectRealtime = false
-            });
+            Console.WriteLine($"✅ Supabase configured");
         }
 
-        private async Task InitializeAsync()
-        {
-            if (_initialized) return;
-
-            Console.WriteLine("⏳ Initializing Supabase...");
-            await _client.InitializeAsync();
-
-            // 🔥 HARD PROOF QUERY
-            var test = await _client.From<StudentTable>().Limit(1).Get();
-            Console.WriteLine($"🔥 Supabase connected. Rows found: {test.Models.Count}");
-
-            _initialized = true;
-        }
-
-        // =========================
-        // READ
-        // =========================
         public async Task<List<Student>> GetAllStudentsAsync()
         {
-            await InitializeAsync();
+            var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/students?select=*");
+            response.EnsureSuccessStatusCode();
 
-            var response = await _client.From<StudentTable>().Get();
-            Console.WriteLine($"✅ Fetched {response.Models.Count} students");
+            var json = await response.Content.ReadAsStringAsync();
 
-            return response.Models.Select(MapToStudent).ToList();
+            // Parse as JsonDocument first to handle JSONB properly
+            var students = new List<Student>();
+            using (JsonDocument doc = JsonDocument.Parse(json))
+            {
+                foreach (var element in doc.RootElement.EnumerateArray())
+                {
+                    var student = ParseStudent(element);
+                    students.Add(student);
+                }
+            }
+
+            return students;
         }
 
         public async Task<Student?> GetStudentByIdAsync(string studentId)
         {
-            await InitializeAsync();
+            var response = await _httpClient.GetAsync(
+                $"{_supabaseUrl}/rest/v1/students?student_id=eq.{studentId}&select=*"
+            );
+            response.EnsureSuccessStatusCode();
 
-            var row = await _client
-                .From<StudentTable>()
-                .Where(x => x.StudentId == studentId)
-                .Single();
+            var json = await response.Content.ReadAsStringAsync();
+            Console.WriteLine("=== RAW JSON FROM SUPABASE ===");
+            Console.WriteLine(json);
+            Console.WriteLine("================================");
 
-            return row == null ? null : MapToStudent(row);
+            using (JsonDocument doc = JsonDocument.Parse(json))
+            {
+                var array = doc.RootElement;
+                if (array.GetArrayLength() == 0) return null;
+
+                return ParseStudent(array[0]);
+            }
         }
 
-        // =========================
-        // CREATE
-        // =========================
+        private Student ParseStudent(JsonElement element)
+        {
+            var student = new Student
+            {
+                Id = element.GetProperty("id").GetInt64(),
+                StudentId = element.GetProperty("student_id").GetString() ?? "",
+                Name = element.GetProperty("name").GetString() ?? "",
+                Semester = element.GetProperty("semester").GetInt32(),
+                Attendance = element.GetProperty("attendance").GetDouble(),
+                AssignmentsSubmitted = element.GetProperty("assignments_submitted").GetInt32(),
+                TotalAssignments = element.GetProperty("total_assignments").GetInt32(),
+                PerformanceNotes = element.GetProperty("performance_notes").GetString() ?? "",
+                Subjects = new Dictionary<string, SubjectMarks>()
+            };
+
+            // Parse subjects JSONB
+            if (element.TryGetProperty("subjects", out JsonElement subjectsElement))
+            {
+                foreach (var subjectProp in subjectsElement.EnumerateObject())
+                {
+                    var subjectName = subjectProp.Name;
+                    var marks = subjectProp.Value.GetProperty("marks").GetInt32();
+                    var total = subjectProp.Value.GetProperty("total").GetInt32();
+
+                    student.Subjects[subjectName] = new SubjectMarks
+                    {
+                        Marks = marks,
+                        Total = total
+                    };
+                }
+            }
+
+            // Parse timestamps if present
+            if (element.TryGetProperty("created_at", out JsonElement createdAt))
+            {
+                student.CreatedAt = createdAt.GetDateTime();
+            }
+            if (element.TryGetProperty("updated_at", out JsonElement updatedAt))
+            {
+                student.UpdatedAt = updatedAt.GetDateTime();
+            }
+
+            return student;
+        }
+
         public async Task<Student> CreateStudentAsync(Student student)
         {
-            await InitializeAsync();
+            var json = JsonSerializer.Serialize(new
+            {
+                student_id = student.StudentId,
+                name = student.Name,
+                semester = student.Semester,
+                subjects = student.Subjects,
+                attendance = student.Attendance,
+                assignments_submitted = student.AssignmentsSubmitted,
+                total_assignments = student.TotalAssignments,
+                performance_notes = student.PerformanceNotes
+            });
 
-            var insert = await _client
-                .From<StudentTable>()
-                .Insert(MapToTable(student));
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            Console.WriteLine($"✅ Student created: {student.StudentId}");
-            return MapToStudent(insert.Models.First());
+            var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/students", content);
+            response.EnsureSuccessStatusCode();
+
+            return student;
         }
 
-        // =========================
-        // UPDATE
-        // =========================
         public async Task<Student> UpdateStudentAsync(Student student)
         {
-            await InitializeAsync();
+            var json = JsonSerializer.Serialize(new
+            {
+                name = student.Name,
+                semester = student.Semester,
+                subjects = student.Subjects,
+                attendance = student.Attendance,
+                assignments_submitted = student.AssignmentsSubmitted,
+                total_assignments = student.TotalAssignments,
+                performance_notes = student.PerformanceNotes
+            });
 
-            var update = await _client
-                .From<StudentTable>()
-                .Update(MapToTable(student));
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            Console.WriteLine($"✅ Student updated: {student.StudentId}");
-            return MapToStudent(update.Models.First());
+            var response = await _httpClient.PatchAsync(
+                $"{_supabaseUrl}/rest/v1/students?student_id=eq.{student.StudentId}",
+                content
+            );
+            response.EnsureSuccessStatusCode();
+
+            return student;
         }
 
-        // =========================
-        // DELETE
-        // =========================
         public async Task DeleteStudentAsync(string studentId)
         {
-            await InitializeAsync();
-
-            await _client
-                .From<StudentTable>()
-                .Where(x => x.StudentId == studentId)
-                .Delete();
-
-            Console.WriteLine($"🗑️ Student deleted: {studentId}");
+            var response = await _httpClient.DeleteAsync(
+                $"{_supabaseUrl}/rest/v1/students?student_id=eq.{studentId}"
+            );
+            response.EnsureSuccessStatusCode();
         }
-
-        // =========================
-        // MAPPERS
-        // =========================
-        private static Student MapToStudent(StudentTable s) => new()
-        {
-            Id = s.Id,
-            StudentId = s.StudentId,
-            Name = s.Name,
-            Semester = s.Semester,
-            Attendance = s.Attendance,
-            AssignmentsSubmitted = s.AssignmentsSubmitted,
-            TotalAssignments = s.TotalAssignments,
-            PerformanceNotes = s.PerformanceNotes
-        };
-
-        private static StudentTable MapToTable(Student s) => new()
-        {
-            Id = s.Id ?? 0,
-            StudentId = s.StudentId,
-            Name = s.Name,
-            Semester = s.Semester,
-            Attendance = s.Attendance,
-            AssignmentsSubmitted = s.AssignmentsSubmitted,
-            TotalAssignments = s.TotalAssignments,
-            PerformanceNotes = s.PerformanceNotes,
-            Subjects = s.Subjects?
-                .ToDictionary(k => k.Key, v => (object)v.Value)
-                ?? new Dictionary<string, object>()
-        };
     }
 }

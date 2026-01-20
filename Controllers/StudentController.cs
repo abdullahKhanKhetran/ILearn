@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ILearn.Models;
 using ILearn.Services;
+using System.Text.Json;
 
 namespace ILearn.Controllers
 {
@@ -58,10 +59,27 @@ namespace ILearn.Controllers
         // POST: Student/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Student student)
+        public async Task<IActionResult> Create(Student student, string subjectsJson)
         {
             try
             {
+                // Parse subjects JSON if provided
+                if (!string.IsNullOrEmpty(subjectsJson))
+                {
+                    var subjectsDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, SubjectMarks>>(subjectsJson);
+                    if (subjectsDict != null)
+                    {
+                        student.Subjects = subjectsDict;
+                    }
+                }
+                
+                // Validate required fields
+                if (string.IsNullOrEmpty(student.StudentId) || string.IsNullOrEmpty(student.Name))
+                {
+                    TempData["Error"] = "Student ID and Name are required";
+                    return View(student);
+                }
+
                 await _supabaseService.CreateStudentAsync(student);
                 TempData["Success"] = "Student created successfully!";
                 return RedirectToAction(nameof(Index));
@@ -69,7 +87,7 @@ namespace ILearn.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating student");
-                TempData["Error"] = "Failed to create student";
+                TempData["Error"] = $"Failed to create student: {ex.Message}";
                 return View(student);
             }
         }
@@ -95,12 +113,32 @@ namespace ILearn.Controllers
         // POST: Student/Edit/S001
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(string id, Student student)
+        public async Task<IActionResult> Edit(string id, Student student, string subjectsJson)
         {
             if (id != student.StudentId) return NotFound();
 
             try
             {
+                // Parse subjects JSON if provided
+                if (!string.IsNullOrEmpty(subjectsJson))
+                {
+                    var subjectsDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, SubjectMarks>>(subjectsJson);
+                    if (subjectsDict != null)
+                    {
+                        student.Subjects = subjectsDict;
+                    }
+                }
+                
+                // Ensure StudentId matches
+                student.StudentId = id;
+                
+                // Validate required fields
+                if (string.IsNullOrEmpty(student.Name))
+                {
+                    TempData["Error"] = "Name is required";
+                    return View(student);
+                }
+
                 await _supabaseService.UpdateStudentAsync(student);
                 TempData["Success"] = "Student updated successfully!";
                 return RedirectToAction(nameof(Index));
@@ -108,7 +146,7 @@ namespace ILearn.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating student");
-                TempData["Error"] = "Failed to update student";
+                TempData["Error"] = $"Failed to update student: {ex.Message}";
                 return View(student);
             }
         }

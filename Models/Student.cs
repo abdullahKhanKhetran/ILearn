@@ -2,7 +2,6 @@
 
 namespace ILearn.Models
 {
-    // 🔹 App / API model (NO Supabase inheritance)
     public class Student
     {
         [JsonPropertyName("id")]
@@ -18,7 +17,7 @@ namespace ILearn.Models
         public int Semester { get; set; }
 
         [JsonPropertyName("subjects")]
-        public Dictionary<string, SubjectMarks>? Subjects { get; set; }
+        public Dictionary<string, SubjectMarks> Subjects { get; set; } = new();
 
         [JsonPropertyName("attendance")]
         public double Attendance { get; set; }
