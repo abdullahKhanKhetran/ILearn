@@ -11,4 +11,4 @@ cmds = ["dotnet publish --no-restore -c Release -o out"]
 cmd = "cd out && ASPNETCORE_URLS=http://0.0.0.0:$PORT dotnet ILearn.dll"
 
 [variables]
-ChatbotApi__BaseUrl = ""
+ChatbotApi__BaseUrl = "http://placeholder:8000"
