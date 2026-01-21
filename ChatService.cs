@@ -13,7 +13,7 @@ namespace ILearn.Services
         public ChatService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            _apiBaseUrl = configuration["ChatbotApi:BaseUrl"] ?? "http://localhost:8000";
+            _apiBaseUrl = configuration["PythonApi:BaseUrl"] ?? "http://localhost:8000";
             
             // Configure JSON options to respect JsonPropertyName attributes
             _jsonOptions = new JsonSerializerOptions
